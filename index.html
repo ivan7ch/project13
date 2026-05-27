@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC/USDT 15m — аналіз патернів</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🟢</text></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --bg-card: #ffffff;
+    --bg-card-2: #f1f3f6;
+    --border: #e4e7eb;
+    --border-strong: #d4d8de;
+    --text: #1a1f2e;
+    --text-dim: #6b7280;
+    --text-bright: #0a0e1a;
+    --green: #00b87a;
+    --green-bg: rgba(0, 184, 122, 0.08);
+    --green-border: rgba(0, 184, 122, 0.3);
+    --red: #e53e51;
+    --red-bg: rgba(229, 62, 81, 0.08);
+    --red-border: rgba(229, 62, 81, 0.3);
+    --blue: #2962ff;
+    --blue-bg: rgba(41, 98, 255, 0.08);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245, 158, 11, 0.08);
+    --purple: #8b5cf6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum'; }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  h1, h2, h3 { color: var(--text-bright); }
+  h1 { font-weight: 700; letter-spacing: -0.02em; }
+  h2 { font-weight: 600; letter-spacing: -0.01em; }
+
+  .btn {
+    padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text);
+    transition: all 0.15s; cursor: pointer;
+  }
+  .btn:hover { background: var(--bg-card-2); border-color: var(--text-dim); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); color: white; }
+  .btn-primary:hover { background: #1e50e0; border-color: #1e50e0; }
+
+  .sortable { cursor: pointer; user-select: none; }
+  .sortable:hover { background: var(--bg-card-2); color: var(--text-bright); }
+  .sort-arrow { display: inline-block; width: 14px; opacity: 0.35; }
+  .sort-arrow.active { opacity: 1; color: var(--blue); font-weight: bold; }
+  .results-wrap {
+    max-height: 500px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-card);
+  }
+  .results-wrap table { width: 100%; border-collapse: collapse; }
+  .results-wrap th {
+    position: sticky; top: 0; background: var(--bg-card-2);
+    padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600;
+    border-bottom: 1px solid var(--border); color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .results-wrap td {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text);
+  }
+  .results-wrap tr:hover { background: var(--bg-card-2); }
+
+  .green-tag { color: var(--green); font-weight: 600; }
+  .red-tag { color: var(--red); font-weight: 600; }
+  .gray-tag { color: var(--text-dim); font-weight: 600; }
+
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge-gray { background: var(--bg-card-2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .candle-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .candle-table th {
+    padding: 8px 10px; text-align: left; background: var(--bg-card-2);
+    font-weight: 600; font-size: 11px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .candle-table td {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .label-mono {
+    font-family: 'JetBrains Mono', monospace; background: var(--bg-card-2);
+    padding: 2px 6px; border-radius: 3px; font-size: 11px;
+    border: 1px solid var(--border); color: var(--text);
+  }
+
+  /* Прогрес-бар розподілу матчів */
+  .match-bar {
+    display: flex; gap: 2px; height: 8px; border-radius: 4px;
+    overflow: hidden; background: var(--bg-card-2);
+  }
+  .match-bar > div { transition: width 0.3s ease; }
+
+  /* Прогноз великим шрифтом */
+  .prediction-big {
+    font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .prediction-emoji { font-size: 24px; }
+
+  /* Stat-картки */
+  .stat-tile {
+    background: var(--bg-card-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px;
+  }
+  .stat-tile-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-dim); margin-bottom: 4px; font-weight: 600;
+  }
+  .stat-tile-value { font-size: 16px; font-weight: 600; color: var(--text-bright); }
+  .stat-tile.green { background: var(--green-bg); border-color: var(--green-border); }
+  .stat-tile.green .stat-tile-value { color: var(--green); }
+  .stat-tile.red { background: var(--red-bg); border-color: var(--red-border); }
+  .stat-tile.red .stat-tile-value { color: var(--red); }
+
+  /* Конфіденс-плашка */
+  .confidence-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  .confidence-pill.high { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .confidence-pill.medium { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+  .confidence-pill.low { background: var(--bg-card-2); color: var(--text-dim); border: 1px solid var(--border-strong); }
+  .confidence-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Input файли */
+  input[type="file"] {
+    background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px;
+    font-size: 13px; width: 100%;
+  }
+  input[type="file"]::file-selector-button {
+    background: var(--blue); color: white; border: none;
+    padding: 6px 12px; border-radius: 4px; margin-right: 10px; cursor: pointer;
+    font-weight: 500;
+  }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* Preview блок */
+  .preview-card {
+    background: linear-gradient(135deg, #fffbeb 0%, #fff7d6 100%);
+    border: 1px solid #fbe089;
+    border-left: 4px solid var(--amber);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .preview-content {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 20px;
+    align-items: stretch;
+    min-height: 240px;
+  }
+  .preview-left { display: flex; flex-direction: column; }
+  .preview-right { display: flex; }
+  .preview-right > div { width: 100%; height: 100%; }
+
+  /* Лінк-кнопка журналу */
+  .link-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    background: var(--purple); color: white;
+    transition: background 0.15s;
+  }
+  .link-btn:hover { background: #7c3aed; }
+
+  /* Refresh-стрілка */
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border-strong); color: var(--text-dim);
+    width: 30px; height: 30px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .icon-btn:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-bg); }
+</style>
+</head>
+<body class="p-4 md:p-6">
+
+<div class="max-w-7xl mx-auto">
+
+<!-- Header -->
+<div class="card flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl">BTC/USDT 15m — аналіз патернів</h1>
+    <p class="text-xs mt-1" style="color: var(--text-dim);" id="files-status">Перевірка кешу...</p>
+  </div>
+  <div class="flex gap-2 flex-wrap">
+    <button id="btn-load-files" class="btn">Завантажити нові файли</button>
+    <a href="journal.html" class="link-btn">📊 Журнал</a>
+  </div>
+</div>
+
+<!-- Завантаження файлів -->
+<div id="upload-section" class="card hidden">
+  <h2 class="text-lg mb-2">Завантажте JSON-файли з патернами</h2>
+  <p class="text-sm mb-3" style="color: var(--text-dim);">Потрібні обидва файли: для буднів і для вихідних. Файли зберігаються локально (IndexedDB).</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div>
+      <label class="block text-sm font-medium mb-1" style="color: var(--text);">Будні (weekdays)</label>
+      <input type="file" id="file-weekdays" accept=".json">
+      <p class="text-xs mt-1" style="color: var(--text-dim);" id="weekdays-info">не завантажено</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" style="color: var(--text);">Вихідні (weekends)</label>
+      <input type="file" id="file-weekends" accept=".json">
+      <p class="text-xs mt-1" style="color: var(--text-dim);" id="weekends-info">не завантажено</p>
+    </div>
+  </div>
+  <button id="btn-save-files" class="mt-3 btn btn-primary" disabled>Зберегти і запустити аналіз</button>
+</div>
+
+<!-- Попередній прогноз -->
+<div id="preview-section" class="preview-card">
+  <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+    <div>
+      <h2 class="text-lg">⚡ Попередній прогноз</h2>
+      <p class="text-xs mt-1" style="color: var(--text-dim);" id="preview-rate-info">По формованій свічці. Оновлення кожні 2 сек.</p>
+    </div>
+    <div class="text-right">
+      <p class="text-xs" style="color: var(--text-dim);">До закриття свічки:</p>
+      <p class="mono font-bold text-xl" id="preview-countdown">—</p>
+      <p class="text-xs mt-1" style="color: var(--text-dim);" id="preview-last-update">—</p>
+    </div>
+  </div>
+
+  <div class="preview-content">
+    <div class="preview-left" id="preview-prediction">—</div>
+    <div class="preview-right">
+      <div id="preview-minichart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Підсумковий прогноз -->
+<div id="aggregate-section" class="card hidden">
+  <div class="flex justify-between items-start mb-3">
+    <h2 class="text-lg">Підсумковий прогноз</h2>
+    <div class="flex items-center gap-2">
+      <span class="text-xs" style="color: var(--text-dim);" id="aggregate-updated">—</span>
+      <button id="btn-refresh-aggregate" title="Оновити" class="icon-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
+          <path d="M21 3v5h-5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div id="aggregate-content">—</div>
+</div>
+
+<!-- Поточна ситуація -->
+<div id="current-section" class="card hidden">
+  <div class="flex flex-wrap justify-between items-start mb-3 gap-2">
+    <div>
+      <h2 class="text-lg">Поточна ситуація</h2>
+      <p class="text-sm mt-1" style="color: var(--text-dim);" id="current-time">—</p>
+    </div>
+    <div class="text-right text-sm">
+      <p style="color: var(--text-dim);">Наступне оновлення:</p>
+      <p class="mono font-semibold" id="next-update">—</p>
+    </div>
+  </div>
+  <div>
+    <h3 class="text-sm font-medium mb-2" style="color: var(--text-dim);">Останні 4 закриті свічки + поточна (формується)</h3>
+    <div class="overflow-x-auto">
+      <table class="candle-table mono">
+        <thead>
+          <tr>
+            <th>час (Київ)</th>
+            <th>open</th><th>high</th><th>low</th><th>close</th>
+            <th>volume</th><th>колір</th><th>токен</th>
+          </tr>
+        </thead>
+        <tbody id="candles-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Знайдені збіги -->
+<div id="results-section" class="card hidden">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-lg">Знайдені збіги</h2>
+    <p class="text-sm" style="color: var(--text-dim);" id="results-count">—</p>
+  </div>
+  <div class="results-wrap">
+    <table class="mono">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="combo">combo <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="pattern">pattern <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="length">len <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="direction">dir <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="win_rate">WR <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="edge_vs_baseline">edge <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="cases">cases <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="train_cases">train n <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="train_wr">train wr <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="test_cases">test n <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="test_wr">test wr <span class="sort-arrow">▾</span></th>
+          <th class="sortable" data-sort="stability">drop <span class="sort-arrow">▾</span></th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Помилка -->
+<div id="error-log" class="card hidden" style="background: var(--red-bg); border-color: var(--red-border);">
+  <h3 class="font-semibold mb-1" style="color: var(--red);">Помилка</h3>
+  <pre id="error-text" class="text-sm whitespace-pre-wrap" style="color: var(--red);"></pre>
+</div>
+
+</div>
+
+<script src="indicators.js"></script>
+<script src="tokens.js"></script>
+<script src="matcher.js"></script>
+<script src="storage.js"></script>
+<script src="binance.js"></script>
+<script src="ui.js"></script>
+<script src="timeformat.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

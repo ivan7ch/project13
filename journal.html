@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Журнал прогнозів — BTC/USDT 15m</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  body { background: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+  .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .green-tag { color: #15803d; font-weight: 600; }
+  .red-tag { color: #b91c1c; font-weight: 600; }
+  .gray-tag { color: #64748b; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .stat-box { padding: 12px; border-radius: 6px; text-align: center; }
+  .stat-value { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: #64748b; }
+  .results-wrap { max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 4px; }
+  .results-wrap table { width: 100%; border-collapse: collapse; }
+  .results-wrap th { position: sticky; top: 0; background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 600; border-bottom: 1px solid #cbd5e1; }
+  .results-wrap td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+  .results-wrap tr:hover { background: #f8fafc; cursor: pointer; }
+  .label-mono { font-family: ui-monospace, monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+  .progress-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.95); z-index: 9999;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+  }
+  .progress-bar { width: 320px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+  .progress-bar-fill { height: 100%; background: #2563eb; transition: width 0.2s; }
+  #chart-candles { height: 380px; }
+  #chart-pnl { height: 220px; }
+</style>
+</head>
+<body class="p-4 md:p-6">
+
+<div class="max-w-7xl mx-auto">
+
+<!-- Прогрес -->
+<div id="progress" class="progress-overlay">
+  <p class="text-lg font-semibold" id="progress-text">Завантаження...</p>
+  <div class="progress-bar">
+    <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+  </div>
+  <p class="text-sm text-gray-500 mt-2" id="progress-sub"></p>
+</div>
+
+<!-- Header -->
+<div class="card flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">Журнал прогнозів — BTC/USDT 15m</h1>
+    <p class="text-sm text-gray-600" id="period-info">—</p>
+    <p class="text-xs text-gray-500 mt-1">Час відображається за Києвом. Алгоритм використовує UTC.</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="index.html" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm">← Назад</a>
+    <button id="btn-refresh" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">Оновити</button>
+  </div>
+</div>
+
+<!-- Селектор періоду -->
+<div class="card">
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-sm font-medium text-gray-700 mr-2">Період:</span>
+    <button data-period="today" class="period-btn bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Сьогодні (Київ)</button>
+    <button data-period="this_week" class="period-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm">Цей тиждень (Київ)</button>
+    <button data-period="24h" class="period-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm">Останні 24 год</button>
+    <button data-period="7d" class="period-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm">Останні 7 днів</button>
+    <span class="text-xs text-gray-500 ml-auto" id="bg-status">—</span>
+  </div>
+</div>
+
+<!-- Помилка -->
+<div id="error-log" class="card bg-red-50 border border-red-200 hidden">
+  <h3 class="font-semibold text-red-800 mb-1">Помилка</h3>
+  <pre id="error-text" class="text-sm text-red-700 whitespace-pre-wrap"></pre>
+</div>
+
+<!-- Графік свічок з TradingView -->
+<div class="card">
+  <h2 class="text-lg font-semibold mb-2">Графік свічок з прогнозами</h2>
+  <p class="text-xs text-gray-600 mb-2">▲ зелений = прогноз GREEN, ▼ червоний = прогноз RED, без позначки = немає сигналу. Клік на свічку для деталей.</p>
+  <div id="chart-candles"></div>
+</div>
+
+<!-- Деталі вибраної свічки -->
+<div id="details-section" class="card hidden">
+  <h2 class="text-lg font-semibold mb-2">Деталі вибраної свічки</h2>
+  <div id="details-content"></div>
+</div>
+
+<!-- Статистика -->
+<div class="card">
+  <h2 class="text-lg font-semibold mb-3">Статистика прогнозів</h2>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="stats-grid"></div>
+</div>
+
+<!-- Графік PnL -->
+<div class="card">
+  <h2 class="text-lg font-semibold mb-2">Крива виграш − програш (накопичувально)</h2>
+  <p class="text-xs text-gray-600 mb-2">+1 за виграш, −1 за програш. Зростає → стратегія працює.</p>
+  <div id="chart-pnl"></div>
+</div>
+
+<!-- Таблиця -->
+<div class="card">
+  <div class="flex justify-between items-center mb-2">
+    <h2 class="text-lg font-semibold">Таблиця всіх свічок</h2>
+    <p class="text-sm text-gray-600" id="table-count">—</p>
+  </div>
+  <div class="results-wrap" style="max-height: 600px;">
+    <table class="mono">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>час (Київ)</th>
+          <th>open</th>
+          <th>high</th>
+          <th>low</th>
+          <th>close</th>
+          <th>колір</th>
+          <th>прогноз</th>
+          <th>факт</th>
+          <th>результат</th>
+          <th>матчів</th>
+        </tr>
+      </thead>
+      <tbody id="journal-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<script src="indicators.js"></script>
+<script src="tokens.js"></script>
+<script src="matcher.js"></script>
+<script src="storage.js"></script>
+<script src="binance.js"></script>
+<script src="backtest.js"></script>
+<script src="timeformat.js"></script>
+<script src="journal-app.js"></script>
+</body>
+</html>
